@@ -507,7 +507,7 @@ async function callOpenRouter(prompt, apiKey, modelId){
     },
     body: JSON.stringify({
       model: modelId,
-      max_tokens: 1000,
+      max_tokens: 1800,
       messages: [{ role: "user", content: prompt }]
     })
   });
@@ -520,8 +520,17 @@ async function callOpenRouter(prompt, apiKey, modelId){
   }
   const data = await response.json();
   const text = data?.choices?.[0]?.message?.content || '';
+  if (!text.trim()){
+    console.error("Empty response from model. Full payload:", data);
+    throw new Error("The free model returned nothing that time — often just a rate-limit hiccup. Try again.");
+  }
   const clean = text.replace(/```json|```/g, '').trim();
-  return JSON.parse(clean);
+  try {
+    return JSON.parse(clean);
+  } catch (e){
+    console.error("Unparseable model output:", text);
+    throw new Error("The model's response got cut off or wasn't valid JSON. Try again, or try fewer personas.");
+  }
 }
 
 function personaById(id){ return PERSONAS.find(p => p.id === id); }
