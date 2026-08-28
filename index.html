@@ -481,15 +481,13 @@ PERSONAS ARGUING (each must argue a DIFFERENT side or angle, even if the questio
 ${personaDescs}
 
 INSTRUCTIONS:
-1. First decide: is this question genuinely contested (a matter of values, definition, or judgment) or does it have a settled factual answer? If it has a settled factual answer, set "isGenuinelyContested" to false and put the plain, direct answer in "plainAnswer" instead of generating a fake debate.
-2. If it IS genuinely contested, generate for EACH persona: an "opening" statement (steelman their position, 1-2 sentences, ~30 words max), a "rebuttal" (responding to a different persona by name, 1 sentence, ~25 words max), and a "closing" (punchy one-liner, ~15 words max).
+1. Treat this question as genuinely contested no matter what it is — always generate a full debate, even for questions that seem to have an obvious or factual answer. Find the strongest reasonable case for each persona's side regardless.
+2. For EACH persona generate: an "opening" statement (steelman their position, 1 short sentence, ~20 words max), a "rebuttal" (responding to a different persona by name, 1 short sentence, ~18 words max), and a "closing" (punchy one-liner, ~10 words max). Keep every field brief — brevity matters more than completeness here.
 3. Each persona must argue the STRONGEST honest version of their position — no strawmanning the other side.
 4. Stay in character per persona description.
-5. Respond with ONLY raw JSON, no markdown fences, no preamble. Schema:
+5. Respond with ONLY raw JSON, no markdown fences, no preamble, no text before or after the JSON. Keep the JSON compact. Schema:
 
 {
-  "isGenuinelyContested": boolean,
-  "plainAnswer": string or null,
   "personas": [
     { "id": string, "opening": string, "rebuttal": string, "closing": string }
   ]
@@ -540,15 +538,6 @@ function renderTranscript(question, result, personaList){
   body.innerHTML = '';
   document.getElementById('transcriptCase').textContent = 'Case No. ' + String(caseCounter).padStart(5,'0');
   document.getElementById('transcriptQ').textContent = question.length > 60 ? question.slice(0,57) + '…' : question;
-
-  if (!result.isGenuinelyContested){
-    const div = document.createElement('div');
-    div.className = 'plain-answer';
-    div.innerHTML = `<p>${escapeHtml(result.plainAnswer || "This one isn't really up for debate.")}</p>`;
-    body.appendChild(div);
-    document.getElementById('transcript').style.display = 'block';
-    return;
-  }
 
   const rounds = [
     { key: 'opening', label: 'Opening Statements' },
