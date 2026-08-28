@@ -426,7 +426,7 @@ let selected = new Set(['philosopher', 'contrarian']);
 let caseCounter = Math.floor(1000 + Math.random() * 8999);
 let lastResult = null;
 const votes = {};
-const FREE_MODEL = "meta-llama/llama-3.1-8b-instruct:free";
+const FREE_MODEL = "openrouter/free"; // OpenRouter's auto-router: always picks a currently-available free model
 
 function renderCaseNo(){
   document.getElementById('caseNo').textContent = String(caseCounter).padStart(5,'0');
