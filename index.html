@@ -119,7 +119,18 @@
     background: var(--paper);
     color: var(--ink);
   }
-  textarea#question:focus-visible, .persona-card:focus-visible, button:focus-visible, input[type=range]:focus-visible{
+  input[type=text], input[type=password]{
+    width: 100%;
+    font-family: 'Courier Prime', monospace;
+    font-size: 14px;
+    padding: 10px 12px;
+    border: 1px solid var(--ink);
+    background: var(--paper);
+    color: var(--ink);
+  }
+
+  textarea#question:focus-visible, .persona-card:focus-visible, button:focus-visible,
+  input[type=range]:focus-visible, input[type=text]:focus-visible, input[type=password]:focus-visible{
     outline: 3px solid var(--pen-blue);
     outline-offset: 2px;
   }
@@ -415,6 +426,7 @@ let selected = new Set(['philosopher', 'contrarian']);
 let caseCounter = Math.floor(1000 + Math.random() * 8999);
 let lastResult = null;
 const votes = {};
+const FREE_MODEL = "meta-llama/llama-3.1-8b-instruct:free";
 
 function renderCaseNo(){
   document.getElementById('caseNo').textContent = String(caseCounter).padStart(5,'0');
@@ -484,19 +496,30 @@ INSTRUCTIONS:
 }`;
 }
 
-async function callClaude(prompt){
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
+async function callOpenRouter(prompt, apiKey, modelId){
+  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": "Bearer " + apiKey,
+      "HTTP-Referer": window.location.href,
+      "X-Title": "The Argument Simulator"
+    },
     body: JSON.stringify({
-      model: "claude-sonnet-4-6",
+      model: modelId,
       max_tokens: 1000,
       messages: [{ role: "user", content: prompt }]
     })
   });
-  if (!response.ok) throw new Error("The court reporter fainted (request failed).");
+  if (!response.ok){
+    let detail = '';
+    try { const errBody = await response.json(); detail = errBody?.error?.message || ''; } catch(e){}
+    if (response.status === 401) throw new Error("OpenRouter rejected the API key. Double-check it and try again.");
+    if (response.status === 402) throw new Error("OpenRouter says the account is out of credits.");
+    throw new Error(detail || ("The court reporter fainted (request failed with status " + response.status + ")."));
+  }
   const data = await response.json();
-  const text = (data.content || []).map(b => b.text || '').join('\n');
+  const text = data?.choices?.[0]?.message?.content || '';
   const clean = text.replace(/```json|```/g, '').trim();
   return JSON.parse(clean);
 }
@@ -582,6 +605,11 @@ document.getElementById('fileBtn').addEventListener('click', async () => {
     showError('Select at least two judges for the bench.');
     return;
   }
+  const apiKey = "OPENROUTER API KEY"; // paste your own key here, replacing this placeholder text
+  if (!apiKey || apiKey === "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"){
+    showError('Add your OpenRouter API key in the code where it says OPENROUTER API KEY.');
+    return;
+  }
 
   const personaList = PERSONAS.filter(p => selected.has(p.id));
   const tone = Number(document.getElementById('tone').value);
@@ -600,14 +628,14 @@ document.getElementById('fileBtn').addEventListener('click', async () => {
   }, 1400);
 
   try {
-    const result = await callClaude(prompt);
+    const result = await callOpenRouter(prompt, apiKey, FREE_MODEL);
     lastResult = result;
     for (const k in votes) delete votes[k];
     renderTranscript(question, result, personaList);
     document.getElementById('transcript').scrollIntoView({ behavior: 'smooth', block: 'start' });
   } catch (err) {
     console.error(err);
-    showError('The case was dismissed on a technicality (something went wrong generating the debate). Try again.');
+    showError(err.message || 'The case was dismissed on a technicality (something went wrong generating the debate). Try again.');
   } finally {
     clearInterval(loadingInt);
     document.getElementById('loading').style.display = 'none';
